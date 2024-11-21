@@ -15,16 +15,16 @@ file_path = "sample.csv"
 df = pd.read_csv(file_path)
 
 st.set_page_config(
-    page_title = 'Real-Time Data Science Dashboard',
-    page_icon = '✅',
+    page_title = 'Real-Time USA Accidents Dashboard',
+    page_icon = '🚨',
     layout = 'wide',
 )
 
 # dashboard title
 
-st.title("DSS911")
+st.title("Real-Time USA Accidents Dashboard")
 
-selected_page = st.radio("Navigation", ["Dashboard", "Report"], horizontal=True)
+selected_page = st.radio("Welcome!", ["Dashboard", "Report"], horizontal=True)
 
 # Dashboard Page
 # if selected_page == "Dashboard":
@@ -107,6 +107,29 @@ selected_page = st.radio("Navigation", ["Dashboard", "Report"], horizontal=True)
 
 
 # Report Page
+
+st.markdown("""
+        <style>
+        .stButton>button {
+            background-color: #4CAF50;  /* Green background */
+            color: white;  /* White text */
+            width: 100%;  /* Full width of the form */
+            padding: 10px;  /* Increase padding */
+            border-radius: 8px;  /* Rounded corners */
+            font-size: 16px;  /* Larger font */
+            font-weight: bold;  /* Bold text */
+            border: none;  /* Remove default border */
+            transition: background-color 0.3s;  /* Smooth color transition */
+        }
+        .stButton>button:hover {
+            background-color: #45a049;  /* Slightly darker green on hover */
+        }
+        .stButton>button:active {
+            background-color: #3e8e41;  /* Even darker when clicked */
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
 if selected_page == "Report":
     st.header("Accident Report Submission")
     df = pd.read_csv("uscities.csv")
@@ -130,10 +153,12 @@ if selected_page == "Report":
     description = st.text_area("Description of the Accident")
     severity = st.selectbox("Severity", ["1", "2", "3", "4", "5"])
 
-
-    # Form to submit a report
-    with st.form("report_form"):
-        submitted = st.form_submit_button("Submit")
+    # Button to submit a report
+    # Centered, compact submit button
+    col1, col2, col3 = st.columns([3,1,3])
+    with col2:
+        submitted = st.button("Submit", type="primary")
+        
 
     if submitted:
         # Save to MongoDB
@@ -147,6 +172,3 @@ if selected_page == "Report":
         }
         #reports_collection.insert_one(report) #to insert to mongodb
         st.success("Report submitted successfully!")
-
-
-
