@@ -26,7 +26,6 @@ st.title("DSS911")
 
 selected_page = st.radio("Navigation", ["Dashboard", "Report"], horizontal=True)
 
-
 # Dashboard Page
 # if selected_page == "Dashboard":
 
@@ -41,7 +40,7 @@ selected_page = st.radio("Navigation", ["Dashboard", "Report"], horizontal=True)
 #     # near real-time / live feed simulation 
 
 #     for seconds in range(200):
-#     #while True: 
+#     #while True: fdsdsafsadafdas
         
 #         df['age_new'] = df['age'] * np.random.choice(range(1,5))
 #         df['balance_new'] = df['balance'] * np.random.choice(range(1,5))
