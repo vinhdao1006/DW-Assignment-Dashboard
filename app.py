@@ -80,7 +80,6 @@ selected_page = st.radio("Welcome!", ["Dashboard", "Report"], horizontal=True)
         ##############################
 
     
-
 #     # Fetch data from MongoDB
 #     accident_data = pd.DataFrame(list(accidents_collection.find()))
     
@@ -151,9 +150,6 @@ if selected_page == "Report":
 
     street = st.text_input("Street")
     
-    # st.write(f"You selected {street} st. in {city} city in {county} county, {state} state.")
-    
-
     
     description = st.text_area("Description of the Accident")
     severity = st.selectbox("Severity", ["1", "2", "3", "4", "5"])
