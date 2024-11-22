@@ -11,15 +11,13 @@ import matplotlib.pyplot as plt
 from lat_lon_data import get_lat_lon
 from weather_data import get_weather_data
 from datetime import datetime
+import pymongo
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import requests
 
-#read from mongodb
 
-file_path = "sample.csv"
-df = pd.read_csv(file_path)
-
+# page settings
 st.set_page_config(
     page_title = 'Real-Time USA Accidents Dashboard',
     page_icon = '🚨',
@@ -27,63 +25,90 @@ st.set_page_config(
 )
 
 # dashboard title
-
 st.title("Real-Time USA Accidents Dashboard")
+
+# Function to connect to MongoDB
+@st.cache_resource
+def get_mongo_client():
+    db_uri = "mongodb+srv://vinhdaovinh1006:VinhDao1006@cluster1.0fg9v.mongodb.net/test"
+    return MongoClient(db_uri, tls=True, tlsAllowInvalidCertificates=True)
+
+# Function to fetch data from MongoDB
+@st.cache_data
+def fetch_accident_data():
+    client = get_mongo_client()
+    db = client['accident_db']
+    reports_collection = db['accidents']
+    data = list(reports_collection.find({}, {"_id": 0}))
+    return pd.DataFrame(data)
+
+# Establish connection and fetch data
+try:
+    df_accidents = fetch_accident_data()
+    st.success("Connected to MongoDB and data fetched successfully!")
+except Exception as e:
+    st.error(f"Error connecting to MongoDB: {e}")
+
+# Refresh data
+def refresh_data():
+    fetch_accident_data.clear()  # Clear the cached data
+    df_accidents = fetch_accident_data()
+    st.success("Data refreshed!")
+    return df_accidents
+
 
 selected_page = st.radio("Welcome!", ["Dashboard", "Report"], horizontal=True)
 
 # # Dashboard Page
-# if selected_page == "Dashboard":
+if selected_page == "Dashboard":
+    ######### only refresh data when user is on dashboard
     
-#     st.header("Dashboard")
-#     ##############################
-
-#     # creating a single-element container.
-#     placeholder = st.empty()
-
-
-#     # near real-time / live feed simulation 
-
-#     for seconds in range(200):
-#     #while True: fdsdsafsadafdas
-        
-#         df['age_new'] = df['age'] * np.random.choice(range(1,5))
-#         df['balance_new'] = df['balance'] * np.random.choice(range(1,5))
-
-#         # creating KPIs 
-#         avg_age = np.mean(df['age_new']) 
-
-#         count_married = int(df[(df["marital"]=='married')]['marital'].count() + np.random.choice(range(1,30)))
-        
-#         balance = np.mean(df['balance_new'])
-
-#         with placeholder.container():
-#             # create three columns
-#             kpi1, kpi2, kpi3 = st.columns(3)
-
-#             # fill in those three columns with respective metrics or KPIs 
-#             kpi1.metric(label="Age ⏳", value=round(avg_age), delta= round(avg_age) - 10)
-#             kpi2.metric(label="Married Count 💍", value= int(count_married), delta= - 10 + count_married)
-#             kpi3.metric(label="A/C Balance ＄", value= f"$ {round(balance,2)} ", delta= - round(balance/count_married) * 100)
-
-#             # create two columns for charts 
-
-#             fig_col1, fig_col2 = st.columns(2)
-#             with fig_col1:
-#                 st.markdown("### First Chart")
-#                 fig = px.density_heatmap(data_frame=df, y = 'age_new', x = 'marital')
-#                 st.write(fig)
-#             with fig_col2:
-#                 st.markdown("### Second Chart")
-#                 fig2 = px.histogram(data_frame = df, x = 'age_new')
-#                 st.write(fig2)
-#             st.markdown("### Detailed Data View")
-#             st.dataframe(df)
-#             time.sleep(1)
-        #placeholder.empty()
-        ##############################
-
+    st.header("Dashboard")
     
+    # creating a single-element container.
+    placeholder = st.empty()
+
+    #current_time = datetime.now()
+
+    current_time = datetime(2016, 5, 2, 0, 0, 0)
+    st.write(f"Current Time: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+
+    for seconds in range(180):
+    #while True:
+        # prepare data, dataframe and variables for all visualization
+        
+        # Filter data for the selected day
+        df_accidents['Start_Time'] = pd.to_datetime(df_accidents['Start_Time'])
+        current_day = current_time.date()
+        previous_day = (current_time - pd.Timedelta(days=1)).date()
+
+        # Get accidents for the current day
+        current_day_accidents = df_accidents[df_accidents['Start_Time'].dt.date == current_day]
+        total_current_day = len(current_day_accidents)
+
+        # Get accidents for the previous day
+        previous_day_accidents = df_accidents[df_accidents['Start_Time'].dt.date == previous_day]
+        total_previous_day = len(previous_day_accidents)
+
+        # Calculate percentage increase
+        if total_previous_day == 0:
+            percent_increase = "N/A (No accidents on the previous day)"
+        else:
+            percent_increase = ((total_current_day - total_previous_day) / total_previous_day) * 100
+        
+        with placeholder.container():
+            #visualize
+            # Display metrics
+            st.metric(label="Total Accidents Today", value=total_current_day)
+            st.metric(label="Total Accidents Yesterday", value=total_previous_day)
+            if isinstance(percent_increase, str):
+                st.write(f"Percentage Increase: {percent_increase}")
+            else:
+                st.metric(label="Percentage Increase from Yesterday", value=f"{percent_increase:.2f}%")
+
+
+
 
 #     # Fetch data from MongoDB
 #     accident_data = pd.DataFrame(list(accidents_collection.find()))
@@ -137,7 +162,6 @@ st.markdown("""
 if selected_page == "Report":
     st.header("Accident Report Submission")
     df = pd.read_csv("uscities.csv")
-    df_id = df
     df = df.dropna(subset=['state_id', 'county_name', 'city'])
 
     states = df['state_name'].unique()
@@ -154,11 +178,7 @@ if selected_page == "Report":
     city = st.selectbox('Select City', cities, index=0)
 
     street = st.text_input("Street")
-    
-    # st.write(f"You selected {street} st. in {city} city in {county} county, {state} state.")
-    
 
-    
     description = st.text_area("Description of the Accident")
     severity = st.selectbox("Severity", ["1", "2", "3", "4", "5"])
 
@@ -187,13 +207,14 @@ if selected_page == "Report":
         new_id = f"A-{highest_id + 1}"
 
         start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        round_time = start_time
 
         weather_main = weather_data.get("main", {})
         weather_wind = weather_data.get("wind", {})
         weather_conditions = weather_data.get("weather", [{}])[0]
         
         weather_report = {
-            "Weather_Timestamp": start_time,
+            "Weather_Timestamp": round_time,
             "Temperature(F)": round((weather_main.get("temp", 0) - 273.15) * 9/5 + 32, 2),
             "Wind_Chill(F)": "",
             "Humidity(%)": weather_main.get("humidity", ""),
@@ -244,5 +265,8 @@ if selected_page == "Report":
             "Nautical_Twilight": "Day",
             "Astronomical_Twilight": "Day"
         }
-        #reports_collection.insert_one(report) #to insert to mongodb
+        
+         #to insert to mongodb
+        reports_collection.insert_one(report)
+        
         st.success("Report submitted successfully!")
