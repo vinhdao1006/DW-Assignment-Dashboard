@@ -22,8 +22,7 @@ def get_weather_data(lat, lon):
     baseurl += str(lon)
     baseurl += "&appid="
     baseurl += "865de76baf524038754ab61b4cb461eb"
-    # print(baseurl)
-    #weather_uri = https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid=865de76baf524038754ab61b4cb461eb
+    
     weather_data = requests.get(baseurl.format(lat=lat, lon=lon)).json()
     return weather_data
 
