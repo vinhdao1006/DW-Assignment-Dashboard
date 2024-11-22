@@ -10,6 +10,10 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from lat_lon_data import get_lat_lon
 from weather_data import get_weather_data
+from datetime import datetime
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+import requests
 
 #read from mongodb
 
@@ -173,14 +177,38 @@ if selected_page == "Report":
         print(address)
         print(weather_data)
         
+        highest_id = 0
+        for report in reports_collection.find().sort([("ID", pymongo.DESCENDING)]).limit(1):
+            highest_id = int(report["ID"].split("-")[1])
+        new_id = f"A-{highest_id + 1}"
+
+        start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        weather_main = weather_data.get("main", {})
+        weather_wind = weather_data.get("wind", {})
+        weather_conditions = weather_data.get("weather", [{}])[0]
+        
+        weather_report = {
+            "Weather_Timestamp": start_time,
+            "Temperature(F)": round((weather_main.get("temp", 0) - 273.15) * 9/5 + 32, 2),
+            "Wind_Chill(F)": "",
+            "Humidity(%)": weather_main.get("humidity", ""),
+            "Pressure(in)": round(weather_main.get("pressure", 0) * 0.02953, 2),
+            "Visibility(mi)": round(weather_data.get("visibility", 0) / 1609.34, 2),
+            "Wind_Direction": weather_wind.get("deg", ""),
+            "Wind_Speed(mph)": round(weather_wind.get("speed", 0) * 2.23694, 2),
+            "Precipitation(in)": weather_data.get("rain", {}).get("1h", ""),
+            "Weather_Condition": weather_conditions.get("main", "Clear")
+        }
+
         report = {
-            "ID": "A-874",
+            "ID": new_id,
             "Source": "Source2",
             "Severity": severity,
-            "Start_Time": "2016-06-22 11:24:04",
-            "End_Time": "2016-06-22 11:54:04",
-            "Start_Lat": 37.605614,
-            "Start_Lng": -121.872658,
+            "Start_Time": start_time,
+            "End_Time": "",
+            "Start_Lat": lat,
+            "Start_Lng": lon,
             "End_Lat": "",
             "End_Lng": "",
             "Distance(mi)": 0,
@@ -193,16 +221,7 @@ if selected_page == "Report":
             "Country": "US",
             "Timezone": "US/Pacific",
             "Airport_Code": "",
-            "Weather_Timestamp": "2016-06-22 11:53:00",
-            "Temperature(F)": 78.1,
-            "Wind_Chill(F)": "",
-            "Humidity(%)": 37,
-            "Pressure(in)": 29.97,
-            "Visibility(mi)": 10,
-            "Wind_Direction": "NW",
-            "Wind_Speed(mph)": 9.2,
-            "Precipitation(in)": "",
-            "Weather_Condition": "Clear",
+            **weather_report,
             "Amenity": "False",
             "Bump": "False",
             "Crossing": "False",
