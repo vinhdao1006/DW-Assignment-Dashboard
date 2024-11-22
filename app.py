@@ -8,6 +8,8 @@ from folium.plugins import MarkerCluster
 import random
 import seaborn as sns
 import matplotlib.pyplot as plt
+from lat_lon_data import get_lat_lon
+from weather_data import get_weather_data
 
 #read from mongodb
 
@@ -26,54 +28,54 @@ st.title("Real-Time USA Accidents Dashboard")
 
 selected_page = st.radio("Welcome!", ["Dashboard", "Report"], horizontal=True)
 
-# Dashboard Page
-if selected_page == "Dashboard":
+# # Dashboard Page
+# if selected_page == "Dashboard":
     
-    st.header("Dashboard")
-    ##############################
+#     st.header("Dashboard")
+#     ##############################
 
-    # creating a single-element container.
-    placeholder = st.empty()
+#     # creating a single-element container.
+#     placeholder = st.empty()
 
 
-    # near real-time / live feed simulation 
+#     # near real-time / live feed simulation 
 
-    for seconds in range(200):
-    #while True: fdsdsafsadafdas
+#     for seconds in range(200):
+#     #while True: fdsdsafsadafdas
         
-        df['age_new'] = df['age'] * np.random.choice(range(1,5))
-        df['balance_new'] = df['balance'] * np.random.choice(range(1,5))
+#         df['age_new'] = df['age'] * np.random.choice(range(1,5))
+#         df['balance_new'] = df['balance'] * np.random.choice(range(1,5))
 
-        # creating KPIs 
-        avg_age = np.mean(df['age_new']) 
+#         # creating KPIs 
+#         avg_age = np.mean(df['age_new']) 
 
-        count_married = int(df[(df["marital"]=='married')]['marital'].count() + np.random.choice(range(1,30)))
+#         count_married = int(df[(df["marital"]=='married')]['marital'].count() + np.random.choice(range(1,30)))
         
-        balance = np.mean(df['balance_new'])
+#         balance = np.mean(df['balance_new'])
 
-        with placeholder.container():
-            # create three columns
-            kpi1, kpi2, kpi3 = st.columns(3)
+#         with placeholder.container():
+#             # create three columns
+#             kpi1, kpi2, kpi3 = st.columns(3)
 
-            # fill in those three columns with respective metrics or KPIs 
-            kpi1.metric(label="Age ⏳", value=round(avg_age), delta= round(avg_age) - 10)
-            kpi2.metric(label="Married Count 💍", value= int(count_married), delta= - 10 + count_married)
-            kpi3.metric(label="A/C Balance ＄", value= f"$ {round(balance,2)} ", delta= - round(balance/count_married) * 100)
+#             # fill in those three columns with respective metrics or KPIs 
+#             kpi1.metric(label="Age ⏳", value=round(avg_age), delta= round(avg_age) - 10)
+#             kpi2.metric(label="Married Count 💍", value= int(count_married), delta= - 10 + count_married)
+#             kpi3.metric(label="A/C Balance ＄", value= f"$ {round(balance,2)} ", delta= - round(balance/count_married) * 100)
 
-            # create two columns for charts 
+#             # create two columns for charts 
 
-            fig_col1, fig_col2 = st.columns(2)
-            with fig_col1:
-                st.markdown("### First Chart")
-                fig = px.density_heatmap(data_frame=df, y = 'age_new', x = 'marital')
-                st.write(fig)
-            with fig_col2:
-                st.markdown("### Second Chart")
-                fig2 = px.histogram(data_frame = df, x = 'age_new')
-                st.write(fig2)
-            st.markdown("### Detailed Data View")
-            st.dataframe(df)
-            time.sleep(1)
+#             fig_col1, fig_col2 = st.columns(2)
+#             with fig_col1:
+#                 st.markdown("### First Chart")
+#                 fig = px.density_heatmap(data_frame=df, y = 'age_new', x = 'marital')
+#                 st.write(fig)
+#             with fig_col2:
+#                 st.markdown("### Second Chart")
+#                 fig2 = px.histogram(data_frame = df, x = 'age_new')
+#                 st.write(fig2)
+#             st.markdown("### Detailed Data View")
+#             st.dataframe(df)
+#             time.sleep(1)
         #placeholder.empty()
         ##############################
 
@@ -106,7 +108,6 @@ if selected_page == "Dashboard":
 
 
 # Report Page
-
 st.markdown("""
         <style>
         .stButton>button {
@@ -132,11 +133,14 @@ st.markdown("""
 if selected_page == "Report":
     st.header("Accident Report Submission")
     df = pd.read_csv("uscities.csv")
-    df = df.dropna(subset=['state_name', 'county_name', 'city'])
+    df_id = df
+    df = df.dropna(subset=['state_id', 'county_name', 'city'])
 
     states = df['state_name'].unique()
     state = st.selectbox('Select State', states, index=0)
     df_state = df[df['state_name'] == state]
+    
+    state = df_state['state_id'].iloc[0]
     
     counties = df_state['county_name'].unique()
     county = st.selectbox('Select County', counties, index=0)
@@ -146,9 +150,11 @@ if selected_page == "Report":
     city = st.selectbox('Select City', cities, index=0)
 
     street = st.text_input("Street")
+    
+    # st.write(f"You selected {street} st. in {city} city in {county} county, {state} state.")
+    
 
-    st.write(f"You selected {street} st. in {city} city in {county} county, {state} state.")
-        
+    
     description = st.text_area("Description of the Accident")
     severity = st.selectbox("Severity", ["1", "2", "3", "4", "5"])
 
@@ -161,13 +167,63 @@ if selected_page == "Report":
 
     if submitted:
         # Save to MongoDB
+        
+        # get lat, lon
+        address = street + " " + city + " " + county + " " + state
+        lat, lon = get_lat_lon(address)
+        
+        # get weather data
+        weather_data = get_weather_data(lat, lon)
+        print(address)
+        print(weather_data)
+        
         report = {
+            "ID": "A-874",
+            "Source": "Source2",
+            "Severity": severity,
+            "Start_Time": "2016-06-22 11:24:04",
+            "End_Time": "2016-06-22 11:54:04",
+            "Start_Lat": 37.605614,
+            "Start_Lng": -121.872658,
+            "End_Lat": "",
+            "End_Lng": "",
+            "Distance(mi)": 0,
+            "Description": description,
             "Street": street,
             "City": city,
             "County": county,
             "State": state,
-            "description": description,
-            "severity": severity,
+            "Zipcode": 0,
+            "Country": "US",
+            "Timezone": "US/Pacific",
+            "Airport_Code": "",
+            "Weather_Timestamp": "2016-06-22 11:53:00",
+            "Temperature(F)": 78.1,
+            "Wind_Chill(F)": "",
+            "Humidity(%)": 37,
+            "Pressure(in)": 29.97,
+            "Visibility(mi)": 10,
+            "Wind_Direction": "NW",
+            "Wind_Speed(mph)": 9.2,
+            "Precipitation(in)": "",
+            "Weather_Condition": "Clear",
+            "Amenity": "False",
+            "Bump": "False",
+            "Crossing": "False",
+            "Give_Way": "False",
+            "Junction": "True",
+            "No_Exit": "False",
+            "Railway": "False",
+            "Roundabout": "False",
+            "Station": "False",
+            "Stop": "False",
+            "Traffic_Calming": "False",
+            "Traffic_Signal": "False",
+            "Turning_Loop": "False",
+            "Sunrise_Sunset": "Day",
+            "Civil_Twilight": "Day",
+            "Nautical_Twilight": "Day",
+            "Astronomical_Twilight": "Day"
         }
         #reports_collection.insert_one(report) #to insert to mongodb
         st.success("Report submitted successfully!")

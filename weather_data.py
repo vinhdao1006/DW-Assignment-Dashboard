@@ -1,68 +1,29 @@
 import subprocess
 from multiprocessing import Process
 import time
-from pymongo import MongoClient
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+import requests
+import json
 
-#mongodb+srv://DSS911:dss911@cluster0.fzsyw.mongodb.net/
+# uri = "mongodb+srv://vinhdaovinh1006:VinhDao1006@cluster1.0fg9v.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
 
-client = MongoClient("mongodb+srv://DSS911:dss911@cluster0.fzsyw.mongodb.net/")
-db = client['accident_db']
-collection = db['accidents']
-
-# Data Upload Function
-def upload_data_to_mongodb():
+# client = MongoClient(uri, serverApi=ServerApi(version='1'))
     
-    """
-    Simulates uploading data to MongoDB every minute.
-    Replace the example data with your actual data upload logic.
-    """
-    while True:
-        '''
-        # Example data to insert
-        data = {
-            "Street": "Main St",
-            "City": "Sample City",
-            "County": "Sample County",
-            "State": "Sample State",
-            "Description": "Test accident description",
-            "Severity": 3,
-            "Timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-        }
-        
-        # Insert data into MongoDB
-        collection.insert_one(data)
-        print(f"Data uploaded to MongoDB: {data}")
-        
-        # Wait for 1 minute before the next upload
-        '''
-        print("hi\n")
-        time.sleep(5)
+# db = client['accident_db']
+# collection = db['accidents']
 
 
-def test_mongodb_connection():
-    try:
-        # Connect to the MongoDB server
-        client = MongoClient("mongodb+srv://DSS911:dss911@cluster0.fzsyw.mongodb.net/")
-        
-        # Check the server information to test the connection
-        client.server_info()
-        print("✅ MongoDB connection successful!")
+def get_weather_data(lat, lon):
+    # get data from weather api based on lat, lon
+    baseurl = "https://api.openweathermap.org/data/2.5/weather?lat="
+    baseurl += str(lat)
+    baseurl += "&lon="
+    baseurl += str(lon)
+    baseurl += "&appid="
+    baseurl += "865de76baf524038754ab61b4cb461eb"
+    # print(baseurl)
+    #weather_uri = https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid=865de76baf524038754ab61b4cb461eb
+    weather_data = requests.get(baseurl.format(lat=lat, lon=lon)).json()
+    return weather_data
 
-        # Optional: List all databases
-        databases = client.list_database_names()
-        print("Databases:", databases)
-        
-        # Optional: List collections in a specific database
-        db = client['US_Accidents_db']
-        collections = db.list_collection_names()
-        print("Collections in 'US_Accidents_db':", collections)
-    
-    except Exception as e:
-        print("❌ MongoDB connection failed!")
-        print("Error:", e)
-
-if __name__ == "__main__":
-    client = MongoClient("mongodb+srv://DSS911:dss911@cluster0.fzsyw.mongodb.net/")
-    db = client['US_Accidents_db']
-    collection = db['accidents']
-    upload_data_to_mongodb()
