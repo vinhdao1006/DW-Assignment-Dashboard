@@ -31,24 +31,33 @@ st.set_page_config(
 # dashboard title
 st.title("Real-Time USA Accidents Dashboard")
 
-global reports_collection
 
-# Function to connect to MongoDB
+# # Function to connect to MongoDB
 @st.cache_resource
-def get_mongo_client():
+def get_mongo_client_and_collection():
     db_uri = "mongodb+srv://vinhdaovinh1006:VinhDao1006@cluster1.0fg9v.mongodb.net/test"
-    return MongoClient(db_uri, tls=True, tlsAllowInvalidCertificates=True)
+    client = MongoClient(db_uri, tls=True, tlsAllowInvalidCertificates=True)
+    db = client['accident_db']
+    collection = db['accidents']
+    return client, collection
+
+# Initialize MongoDB client and collection
+try:
+    client, reports_collection = get_mongo_client_and_collection()
+    st.success("Connected to MongoDB successfully!")
+except Exception as e:
+    st.error(f"Error connecting to MongoDB: {e}")
 
 # Function to fetch data from MongoDB
 @st.cache_data
 def fetch_accident_data():
-    client = get_mongo_client()
-    db = client['accident_db']
-    
-    reports_collection = db['accidents']
-    data = list(reports_collection.find({}, {"_id": 0}))
-    print(reports_collection)
-    return pd.DataFrame(data)
+    try:
+        data = list(reports_collection.find({}, {"_id": 0}))
+        return pd.DataFrame(data)
+    except Exception as e:
+        st.error(f"Error fetching accident data: {e}")
+        return pd.DataFrame()  # Return an empty DataFrame on error
+
 
 global df_accidents
 # Establish connection and fetch data
@@ -61,6 +70,7 @@ except Exception as e:
 # Refresh data
 def refresh_data():
     fetch_accident_data.clear()  # Clear the cached data
+    global df_accidents
     df_accidents = fetch_accident_data()
     st.success("Data refreshed!")
     return df_accidents
@@ -262,37 +272,6 @@ if selected_page == "Dashboard":
                 st.plotly_chart(fig6, use_container_width=True)
 
             time.sleep(300)
-                
-                
-
-
-
-
-#     # Fetch data from MongoDB
-#     accident_data = pd.DataFrame(list(accidents_collection.find()))
-    
-#     if not accident_data.empty:
-#         # Summary Numbers
-#         st.subheader("Accident Summary")
-#         st.metric("Total Accidents", len(accident_data))
-#         st.metric("High Severity Accidents", len(accident_data[accident_data["severity"] == "High"]))
-
-#         # Heatmap of Accidents
-#         st.subheader("Accident Heatmap")
-#         plt.figure(figsize=(10, 6))
-#         heatmap_data = accident_data.groupby(['latitude', 'longitude']).size().reset_index(name="count")
-#         heatmap_pivot = heatmap_data.pivot("latitude", "longitude", "count")
-#         sns.heatmap(heatmap_pivot, cmap="YlGnBu")
-#         st.pyplot(plt)
-
-#         # Real-Time Graphs
-#         st.subheader("Accidents Over Time")
-#         accident_data['date'] = pd.to_datetime(accident_data['submit_time'])
-#         time_series = accident_data.groupby(accident_data['date'].dt.date).size()
-#         st.line_chart(time_series)
-#     else:
-#         st.write("No data available in the accidents collection.")
-
 
 # Report Page
 st.markdown("""
