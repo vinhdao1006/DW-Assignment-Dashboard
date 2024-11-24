@@ -16,6 +16,9 @@ from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import requests
 from streamlit_folium import st_folium
+import pydeck as pdk
+import draw_charts as draw_charts
+
 
 
 # page settings
@@ -28,6 +31,8 @@ st.set_page_config(
 # dashboard title
 st.title("Real-Time USA Accidents Dashboard")
 
+global reports_collection
+
 # Function to connect to MongoDB
 @st.cache_resource
 def get_mongo_client():
@@ -39,10 +44,13 @@ def get_mongo_client():
 def fetch_accident_data():
     client = get_mongo_client()
     db = client['accident_db']
+    
     reports_collection = db['accidents']
     data = list(reports_collection.find({}, {"_id": 0}))
+    print(reports_collection)
     return pd.DataFrame(data)
 
+global df_accidents
 # Establish connection and fetch data
 try:
     df_accidents = fetch_accident_data()
@@ -71,153 +79,189 @@ if selected_page == "Dashboard":
 
     #current_time = datetime.now()
 
-    current_time = datetime(2016, 5, 2, 0, 0, 0)
+    current_time = datetime(2016, 5, 25, 0, 0, 0)
     st.write(f"Current Time: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
     
-    # df_by_city = df_accidents.groupby("City").agg(
-    #         Count=("Severity", "size"),
-    #         Avg_Severity=("Severity", "mean"),
-    #         Lat=("Start_Lat", "mean"),
-    #         Lng=("Start_Lng", "mean"),
-    #     ).reset_index()
-    
-    # df_by_county = df_accidents.groupby("County").agg(
-    #         Count=("Severity", "size"),
-    #         Avg_Severity=("Severity", "mean"),
-    #         Lat=("Start_Lat", "mean"),
-    #         Lng=("Start_Lng", "mean"),
-    #     ).reset_index()
+    ### choosing granularity for charts
+    granularity = "USA"
+    with st.sidebar:
+        granularity = st.radio("Choose level of data granularity:", ["USA", "State", "City"], index=0)
 
-    #     # Aggregating data by State
-    # df_by_state = df_accidents.groupby("State").agg(
-    #     Count=("Severity", "size"),
-    #     Avg_Severity=("Severity", "mean"),
-    #     Lat=("Start_Lat", "mean"),
-    #     Lng=("Start_Lng", "mean"),
-    # ).reset_index()
+        selected_state, selected_city = None, None
+        if granularity in ["State", "City"]:
+            states = df_accidents["State"].unique()
+            selected_state = st.selectbox("Choose a State:", states)
 
-    # # Simulate zoom level
-    # zoom_level = st.slider("Select Zoom Level", 1, 10, 5)
+        if granularity == "City":
+            cities = df_accidents[df_accidents["State"] == selected_state]["City"].unique()
+            selected_city = st.selectbox("Choose a City:", cities)
 
-    # # Choose the dataset to display based on zoom level
-    # if zoom_level >= 7:
-    #     # Show data aggregated by city
-    #     data_to_plot = df_by_city
-    #     lat, lon, color, size, hover_name = "Lat", "Lng", "Avg_Severity", "Count", "City"
-    # elif zoom_level >= 4:
-    #     # Show data aggregated by county
-    #     data_to_plot = df_by_county
-    #     lat, lon, color, size, hover_name = "Lat", "Lng", "Avg_Severity", "Count", "County"
-    # elif zoom_level == 10:
-    #     # Show individual accidents for higher zoom levels
-    #     data_to_plot = df_accidents
-    #     lat, lon, color, size, hover_name = "Start_Lat", "Start_Lng", "Severity", "Severity", "Start_Time"
-    # else:
-    #     # Show data aggregated by state
-    #     data_to_plot = df_by_state
-    #     lat, lon, color, size, hover_name = "Lat", "Lng", "Avg_Severity", "Count", "State"
-    
-    df_loc = df_accidents.loc[(~df_accidents.Start_Lat.isna()) & (~df_accidents.Start_Lng.isna())]
-    
-    def create_map(df_loc, latitude, longitude, zoom, tiles='OpenStreetMap'):
-        """
-        Generate a Folium Map with clustered markers of accident locations.
-        """
-        world_map = folium.Map(location=[latitude, longitude], zoom_start=zoom, tiles=tiles)
-        marker_cluster = MarkerCluster().add_to(world_map)
+    for seconds in range(10):
+    #while True:
+        # prepare data, dataframe and variables for all visualization
+        
 
-        # Iterate over the DataFrame rows and add each marker to the cluster
-        for idx, row in df_loc.iterrows():
-            folium.Marker(
-                location=[row['Start_Lat'], row['Start_Lng']],
-                # You can add more attributes to your marker here, such as a popup
-                popup=f"Lat, Lng: {row['Start_Lat']}, {row['Start_Lng']}"
-            ).add_to(marker_cluster)
-
-        return world_map
-    
-    # Coordinates of the US cities
-    us_cities_coords = {
-        "New York": {"lat": 40.7128, "lon": -74.0060},
-        "Los Angeles": {"lat": 34.0522, "lon": -118.2437},
-        "Chicago": {"lat": 41.8781, "lon": -87.6298},
-        "Houston": {"lat": 29.7604, "lon": -95.3698},
-        "Phoenix": {"lat": 33.4484, "lon": -112.0740},
-        "Philadelphia": {"lat": 39.9526, "lon": -75.1652},
-        "San Antonio": {"lat": 29.4241, "lon": -98.4936},
-        "San Diego": {"lat": 32.7157, "lon": -117.1611},
-        "Dallas": {"lat": 32.7767, "lon": -96.7970},
-        "San Jose": {"lat": 37.3382, "lon": -121.8863},
-        "Austin": {"lat": 30.2672, "lon": -97.7431},
-        "Jacksonville": {"lat": 30.3322, "lon": -81.6557},
-        "Fort Worth": {"lat": 32.7555, "lon": -97.3308},
-        "Columbus": {"lat": 39.9612, "lon": -82.9988},
-        "San Francisco": {"lat": 37.7749, "lon": -122.4194},
-        "Charlotte": {"lat": 35.2271, "lon": -80.8431},
-        "Indianapolis": {"lat": 39.7684, "lon": -86.1581},
-        "Seattle": {"lat": 47.6062, "lon": -122.3321},
-        "Denver": {"lat": 39.7392, "lon": -104.9903},
-        "Washington": {"lat": 38.9072, "lon": -77.0369}
-    }
-
-    map_us = create_map(df_loc, 39.50, -98.35, 4)
-    st_folium(map_us, width=1000, height=800)
-    
-    # for seconds in range(10):
-    # #while True:
-    #     # prepare data, dataframe and variables for all visualization
-    #     #Create and display a Folium map with clustered markers for accident locations 
-
-
-    #     #### Total accident ####
-    #     # Filter data for the selected day
-    #     df_accidents['Start_Time'] = pd.to_datetime(df_accidents['Start_Time'], format='mixed')
-    #     current_day = current_time.date()
-    #     previous_day = (current_time - pd.Timedelta(days=2)).date()
+        #### Total accident ####
+        # Filter data for the selected day
+        df_accidents['Start_Time'] = pd.to_datetime(df_accidents['Start_Time'], format='%Y/%m/%d %H:%M:%S.%f')  #mixed, '%Y/%m/%d %H:%M:%S.%f'
+        current_day = current_time.date()
+        previous_day = (current_time - pd.Timedelta(days=1)).date()
 
     #     # Get accidents for the current day
     #     current_day_accidents = df_accidents[df_accidents['Start_Time'].dt.date == current_day]
     #     total_current_day = len(current_day_accidents)
 
-    #     # Get accidents for the previous day
-    #     previous_day_accidents = df_accidents[df_accidents['Start_Time'].dt.date == previous_day]
-    #     total_previous_day = len(previous_day_accidents)
+        # Get accidents for the previous day
+        previous_day_accidents = df_accidents[df_accidents['Start_Time'].dt.date == previous_day]
+        total_previous_day = len(previous_day_accidents)
         
-    #     # Calculate percentage increase
-    #     if total_previous_day == 0:
-    #         percent_increase = "N/A (No accidents on the previous day)"
-    #     else:
-    #         percent_increase = f"{((total_current_day - total_previous_day) / total_previous_day) * 100}%"
+        # Calculate percentage increase
+        if total_previous_day == 0:
+            percent_increase = "N/A (No accidents on the previous day)"
+        else:
+            percent_increase = f"{((total_current_day - total_previous_day) / total_previous_day) * 100}% from yesterday"
         
-    #     #### Most accident city ####
+        #### Most accident city THIS MONTH####
+        # Filter data for the current month
+        current_month_start = current_time.replace(day=1)  # Start of the current month
+        current_month_end = (current_month_start + pd.DateOffset(months=1)).replace(day=1) - pd.Timedelta(seconds=1)
+        #print(current_time, current_month_start, current_month_end)
 
+        # Filter accidents for the current month
+        current_month_accidents = df_accidents[
+            (df_accidents["Start_Time"] >= current_month_start) &
+            (df_accidents["Start_Time"] <= current_month_end)
+        ]
 
-    #     with placeholder.container():
+        # Group by City to calculate accident counts
+        city_accident_counts_month = (
+            current_month_accidents.groupby("City")
+            .size()
+            .reset_index(name="Accident_Count")
+            .sort_values("Accident_Count", ascending=False)
+        )
+        if not city_accident_counts_month.empty:
+            # Get city with most accidents this month
+            most_accidents_city = city_accident_counts_month.iloc[0]  # First row (highest count)
+            most_accidents_name = most_accidents_city["City"]
+            most_accidents_total = most_accidents_city["Accident_Count"]
+
+            # Get city with least accidents this month (excluding cities with 0)
+            least_accidents_city = city_accident_counts_month.iloc[-1]  # Last row (lowest count)
+            least_accidents_name = least_accidents_city["City"]
+            least_accidents_total = least_accidents_city["Accident_Count"]
+
+            # Avoid division by zero or undefined data
+            if least_accidents_total == 0 or most_accidents_name == least_accidents_name:
+                delta_text = "N/A (No other city to compare)"
+            else:
+                delta_text = f"Least Accidents City: {least_accidents_name} with {least_accidents_total} accidents"
+        else:
+            most_accidents_name = "No Data"
+            most_accidents_total = 0
+            delta_text = "N/A"
+
+        #### Highest severity today ####
+        # Filter accidents for today
+        severity_today = (
+            current_day_accidents["Severity"]
+            .value_counts()
+            .reset_index(name="Accident_Count")
+            .rename(columns={"index": "Severity"})
+            .sort_values("Accident_Count", ascending=False)
+        )
+
+        if not severity_today.empty:
+            highest_severity_today = severity_today.iloc[0]  # Severity with highest accidents today
+            highest_severity_today_level = highest_severity_today["Severity"]
+            highest_severity_today_count = highest_severity_today["Accident_Count"]
+        else:
+            highest_severity_today_level = "No Data"
+            highest_severity_today_count = 0
+
+        # Filter accidents for yesterday
+        severity_yesterday = (
+            previous_day_accidents["Severity"]
+            .value_counts()
+            .reset_index(name="Accident_Count")
+            .rename(columns={"index": "Severity"})
+            .sort_values("Accident_Count", ascending=False)
+        )
+
+        if not severity_yesterday.empty:
+            highest_severity_yesterday = severity_yesterday.iloc[0]  # Severity with highest accidents yesterday
+            highest_severity_yesterday_level = highest_severity_yesterday["Severity"]
+            highest_severity_yesterday_count = highest_severity_yesterday["Accident_Count"]
+        else:
+            highest_severity_yesterday_level = "No Data"
+            highest_severity_yesterday_count = 0
+
+        # Set delta text
+        if highest_severity_today_count > 0 and highest_severity_yesterday_count > 0:
+            delta_text1 = (
+                f"Yesterday: Severity {highest_severity_yesterday_level} with {highest_severity_yesterday_count} accidents"
+            )
+        else:
+            delta_text1 = "No data for yesterday"
+
+        #### Accident trend line chart ####
+
+        with placeholder.container():
             #visualize
             # Display metrics
-            # kp1, kp2, kp3 = st.columns(3)
+            kp1, kp2, kp3 = st.columns(3)
             
-            # kp1.metric(label="Total Accidents Today", value=total_current_day, delta=percent_increase)
-            # kp2.metric()
-            # kp3.metric()
-
-
-            # Create scatter mapbox chart
-            # fig = px.scatter_mapbox(
-            #     data_to_plot,
-            #     lat=lat,
-            #     lon=lon,
-            #     color=color,
-            #     size=size,
-            #     zoom=zoom_level,
-            #     hover_name=hover_name,
-            #     height=900,
-            #     color_continuous_scale=px.colors.sequential.Viridis,
-            # )
+            kp1.metric(label="Total Accidents Today", value=total_current_day, delta=percent_increase)
+            kp2.metric(label="Most Accidents City This Month", value=f"{most_accidents_name} with {most_accidents_total} accidents", delta=delta_text)
+            kp3.metric(label="Highest Severity Today", value=f"Severity {highest_severity_today_level} with {highest_severity_today_count} accidents", delta=delta_text1)
             
-            # fig.update_layout(mapbox_style="open-street-map")
-            # fig.update_layout(title="All Accidents Overview")
-            # st.plotly_chart(fig, use_container_width=True, key=f"scatter_mapbox_chart_{seconds}")
+
+            ### row 1 2 columns
+            fig1_col1, fig2_col2 = st.columns(2)
+            with fig1_col1:
+                #st.markdown("### First Chart")
+
+                # Generate the chart
+                fig = draw_charts.chart3(df_accidents, granularity, state=selected_state, city=selected_city)
+
+                # Display the chart
+                st.plotly_chart(fig, use_container_width=True)
+            with fig2_col2:
+                fig2 = draw_charts.chart4(df_accidents, granularity, state=selected_state, city=selected_city)
+                # Display the chart
+                st.plotly_chart(fig2, use_container_width=True)
+
+            ### row 2 2 columns
+            fig3_col1, fig4_col2 = st.columns(2)
+            with fig3_col1:
+                #st.markdown("### First Chart")
+
+                # Generate the chart
+                fig3 = draw_charts.chart1(df_accidents, granularity, state=selected_state, city=selected_city)
+
+                # Display the chart
+                st.plotly_chart(fig3, use_container_width=True)
+            with fig4_col2:
+                fig4 = draw_charts.chart2(df_accidents, granularity, state=selected_state, city=selected_city)
+                # Display the chart
+                st.plotly_chart(fig4, use_container_width=True)
+            
+            ### row 3 2 columns
+            fig5_col1, fig6_col2 = st.columns(2)
+            with fig5_col1:
+                #st.markdown("### First Chart")
+
+                # Generate the chart
+                fig5 = draw_charts.chart5(df_accidents, granularity, state=selected_state, city=selected_city)
+
+                # Display the chart
+                st.plotly_chart(fig5, use_container_width=True)
+            with fig6_col2:
+                fig6 = draw_charts.chart6(df_accidents, granularity, state=selected_state, city=selected_city)
+                # Display the chart
+                st.plotly_chart(fig6, use_container_width=True)
+
+            time.sleep(300)
                 
                 
 
@@ -316,9 +360,16 @@ if selected_page == "Report":
         print(weather_data)
         
         highest_id = 0
-        for report in reports_collection.find().sort([("ID", pymongo.DESCENDING)]).limit(1):
-            highest_id = int(report["ID"].split("-")[1])
-        new_id = f"A-{highest_id + 1}"
+        
+        last_record = reports_collection.find_one({}, sort=[("_id", pymongo.DESCENDING)])
+
+        if last_record:
+            highest_id = int(last_record["ID"].split("-")[1])
+
+        # If collection is empty, start ID from 1
+        new_id = f"A-{highest_id + 1 if highest_id > 0 else 1}"
+        # for report in reports_collection.find().sort([("ID", pymongo.DESCENDING)]).limit(1):
+        #     highest_id = int(report["ID"].split("-")[1])
 
         start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         round_time = start_time
