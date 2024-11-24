@@ -210,22 +210,26 @@ def chart4(df_accidents, granularity, state=None, city=None):
 
 
 def chart5(df_accidents, granularity, state=None, city=None):
-    if granularity == "State" and state:
-        df_filtered = df_accidents[df_accidents["State"] == state]
+    if granularity == "USA":
+        filtered_df = df_accidents
+    elif granularity == "State" and state:
+        filtered_df = df_accidents[df_accidents["State"] == state]
     elif granularity == "City" and state and city:
-        df_filtered = df_accidents[(df_accidents["State"] == state) & (df_accidents["City"] == city)]
+        filtered_df = df_accidents[
+            (df_accidents["State"] == state) & (df_accidents["City"] == city)
+        ]
     else:
-        df_filtered = df_accidents
-
-    df_filtered["Year"] = pd.to_datetime(df_filtered["Start_Time"]).dt.year
+        raise ValueError("Invalid granularity or missing parameters for State/City.")
 
     road_types = [
         "Amenity", "Bump", "Crossing", "Give_Way", "Junction", "No_Exit", "Railway",
         "Roundabout", "Station", "Stop", "Traffic_Calming", "Traffic_Signal", "Turning_Loop"
     ]
 
+    filtered_df["Year"] = pd.to_datetime(filtered_df["Start_Time"]).dt.year
+
     severity_road_counts = (
-        df_filtered.groupby(["Year", "Severity"])[road_types]
+        filtered_df.groupby(["Year", "Severity"])[road_types]
         .sum()
         .reset_index()
     )
@@ -269,4 +273,57 @@ def chart5(df_accidents, granularity, state=None, city=None):
 
 
 def chart6(df_accidents, granularity, state=None, city=None):
-    return None
+    if granularity == "USA":
+        filtered_df = df_accidents
+    elif granularity == "State" and state:
+        filtered_df = df_accidents[df_accidents["State"] == state]
+    elif granularity == "City" and state and city:
+        filtered_df = df_accidents[
+            (df_accidents["State"] == state) & (df_accidents["City"] == city)
+        ]
+    else:
+        raise ValueError("Invalid granularity or missing parameters for State/City.")
+
+    if filtered_df.empty:
+        raise ValueError(
+            f"No data available for the selected criteria: granularity={granularity}, state={state}, city={city}"
+        )
+
+    filtered_df["Hour"] = pd.to_datetime(filtered_df["Start_Time"]).dt.hour
+    filtered_df["Year"] = pd.to_datetime(filtered_df["Start_Time"]).dt.year
+
+    required_columns = ["Year", "Hour", "Severity"]
+    for col in required_columns:
+        if col not in filtered_df.columns:
+            raise KeyError(f"Missing required column: {col}")
+
+    hourly_severity = (
+        filtered_df.groupby(["Year", "Hour", "Severity"])
+        .size()
+        .reset_index(name="Accident_Count")
+    )
+
+    hourly_severity["Severity"] = hourly_severity["Severity"].astype(str)
+
+    fig = px.density_heatmap(
+        hourly_severity,
+        x="Hour",
+        y="Severity",
+        z="Accident_Count",
+        animation_frame="Year",
+        color_continuous_scale="inferno",
+        labels={
+            "Hour": "Hour of Day",
+            "Severity": "Accident Severity",
+            "Accident_Count": "Number of Accidents",
+        },
+        title=f"Daily Distribution of Accident Severities Each Year ({granularity})",
+    )
+
+    fig.update_layout(
+        height=600,
+        margin={"r": 0, "t": 50, "l": 0, "b": 0},
+        xaxis=dict(tickmode="linear", dtick=1),
+    )
+
+    return fig

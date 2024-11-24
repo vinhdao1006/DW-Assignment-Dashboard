@@ -257,10 +257,9 @@ if selected_page == "Dashboard":
                 # Display the chart
                 st.plotly_chart(fig5, use_container_width=True)
             with fig6_col2:
-                st.markdown("### First Chart")
-                #fig6 = draw_charts.chart6(df_accidents, granularity, state=selected_state, city=selected_city)
+                fig6 = draw_charts.chart6(df_accidents, granularity, state=selected_state, city=selected_city)
                 # Display the chart
-                #st.plotly_chart(fig6, use_container_width=True)
+                st.plotly_chart(fig6, use_container_width=True)
 
             time.sleep(300)
                 
