@@ -3,21 +3,15 @@ import numpy as np # np mean, np random
 import pandas as pd # read csv, df manipulation
 import time # to simulate a real time data, time loop 
 import plotly.express as px # interactive charts 
-import folium
-from folium.plugins import MarkerCluster
 import random
-import seaborn as sns
-import matplotlib.pyplot as plt
 from lat_lon_data import get_lat_lon
 from weather_data import get_weather_data
 from datetime import datetime
 import pymongo
 from pymongo.mongo_client import MongoClient
-from pymongo.server_api import ServerApi
 import requests
-from streamlit_folium import st_folium
-import pydeck as pdk
 import draw_charts as draw_charts
+
 
 
 
