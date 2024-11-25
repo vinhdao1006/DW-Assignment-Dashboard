@@ -106,8 +106,8 @@ if selected_page == "Dashboard":
             cities = df_accidents[df_accidents["State"] == selected_state]["City"].unique()
             selected_city = st.selectbox("Choose a City:", cities)
 
-    for seconds in range(10):
-    #while True:
+    for seconds in range(10): # for testing 300*10 = 3000s
+    #while True: # for real use
         # prepare data, dataframe and variables for all visualization
         
 
@@ -118,8 +118,8 @@ if selected_page == "Dashboard":
         previous_day = (current_time - pd.Timedelta(days=1)).date()
 
     #     # Get accidents for the current day
-    #     current_day_accidents = df_accidents[df_accidents['Start_Time'].dt.date == current_day]
-    #     total_current_day = len(current_day_accidents)
+        current_day_accidents = df_accidents[df_accidents['Start_Time'].dt.date == current_day]
+        total_current_day = len(current_day_accidents)
 
         # Get accidents for the previous day
         previous_day_accidents = df_accidents[df_accidents['Start_Time'].dt.date == previous_day]
