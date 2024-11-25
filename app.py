@@ -109,121 +109,17 @@ if selected_page == "Dashboard":
     for seconds in range(10): # for testing 300*10 = 3000s
     #while True: # for real use
         # prepare data, dataframe and variables for all visualization
-        
 
-        #### Total accident ####
-        # Filter data for the selected day
-        df_accidents['Start_Time'] = pd.to_datetime(df_accidents['Start_Time'], format='%Y/%m/%d %H:%M:%S.%f')  #mixed, '%Y/%m/%d %H:%M:%S.%f'
-        current_day = current_time.date()
-        previous_day = (current_time - pd.Timedelta(days=1)).date()
-
-    #     # Get accidents for the current day
-        current_day_accidents = df_accidents[df_accidents['Start_Time'].dt.date == current_day]
-        total_current_day = len(current_day_accidents)
-
-        # Get accidents for the previous day
-        previous_day_accidents = df_accidents[df_accidents['Start_Time'].dt.date == previous_day]
-        total_previous_day = len(previous_day_accidents)
-        
-        # Calculate percentage increase
-        if total_previous_day == 0:
-            percent_increase = "N/A (No accidents on the previous day)"
-        else:
-            percent_increase = f"{((total_current_day - total_previous_day) / total_previous_day) * 100}% from yesterday"
-        
-        #### Most accident city THIS MONTH####
-        # Filter data for the current month
-        current_month_start = current_time.replace(day=1)  # Start of the current month
-        current_month_end = (current_month_start + pd.DateOffset(months=1)).replace(day=1) - pd.Timedelta(seconds=1)
-        #print(current_time, current_month_start, current_month_end)
-
-        # Filter accidents for the current month
-        current_month_accidents = df_accidents[
-            (df_accidents["Start_Time"] >= current_month_start) &
-            (df_accidents["Start_Time"] <= current_month_end)
-        ]
-
-        # Group by City to calculate accident counts
-        city_accident_counts_month = (
-            current_month_accidents.groupby("City")
-            .size()
-            .reset_index(name="Accident_Count")
-            .sort_values("Accident_Count", ascending=False)
-        )
-        if not city_accident_counts_month.empty:
-            # Get city with most accidents this month
-            most_accidents_city = city_accident_counts_month.iloc[0]  # First row (highest count)
-            most_accidents_name = most_accidents_city["City"]
-            most_accidents_total = most_accidents_city["Accident_Count"]
-
-            # Get city with least accidents this month (excluding cities with 0)
-            least_accidents_city = city_accident_counts_month.iloc[-1]  # Last row (lowest count)
-            least_accidents_name = least_accidents_city["City"]
-            least_accidents_total = least_accidents_city["Accident_Count"]
-
-            # Avoid division by zero or undefined data
-            if least_accidents_total == 0 or most_accidents_name == least_accidents_name:
-                delta_text = "N/A (No other city to compare)"
-            else:
-                delta_text = f"Least Accidents City: {least_accidents_name} with {least_accidents_total} accidents"
-        else:
-            most_accidents_name = "No Data"
-            most_accidents_total = 0
-            delta_text = "N/A"
-
-        #### Highest severity today ####
-        # Filter accidents for today
-        severity_today = (
-            current_day_accidents["Severity"]
-            .value_counts()
-            .reset_index(name="Accident_Count")
-            .rename(columns={"index": "Severity"})
-            .sort_values("Accident_Count", ascending=False)
-        )
-
-        if not severity_today.empty:
-            highest_severity_today = severity_today.iloc[0]  # Severity with highest accidents today
-            highest_severity_today_level = highest_severity_today["Severity"]
-            highest_severity_today_count = highest_severity_today["Accident_Count"]
-        else:
-            highest_severity_today_level = "No Data"
-            highest_severity_today_count = 0
-
-        # Filter accidents for yesterday
-        severity_yesterday = (
-            previous_day_accidents["Severity"]
-            .value_counts()
-            .reset_index(name="Accident_Count")
-            .rename(columns={"index": "Severity"})
-            .sort_values("Accident_Count", ascending=False)
-        )
-
-        if not severity_yesterday.empty:
-            highest_severity_yesterday = severity_yesterday.iloc[0]  # Severity with highest accidents yesterday
-            highest_severity_yesterday_level = highest_severity_yesterday["Severity"]
-            highest_severity_yesterday_count = highest_severity_yesterday["Accident_Count"]
-        else:
-            highest_severity_yesterday_level = "No Data"
-            highest_severity_yesterday_count = 0
-
-        # Set delta text
-        if highest_severity_today_count > 0 and highest_severity_yesterday_count > 0:
-            delta_text1 = (
-                f"Yesterday: Severity {highest_severity_yesterday_level} with {highest_severity_yesterday_count} accidents"
-            )
-        else:
-            delta_text1 = "No data for yesterday"
-
-        #### Accident trend line chart ####
-
+        kp1_value, kp1_delta, kp2_value, kp2_delta, kp3_value, kp3_delta = draw_charts.col3(df_accidents, current_time)
+        df_accidents['Start_Time'] = pd.to_datetime(df_accidents['Start_Time'], format='%Y/%m/%d %H:%M:%S.%f')
         with placeholder.container():
             #visualize
             # Display metrics
             kp1, kp2, kp3 = st.columns(3)
             
-            kp1.metric(label="Total Accidents Today", value=total_current_day, delta=percent_increase)
-            kp2.metric(label="Most Accidents City This Month", value=f"{most_accidents_name} with {most_accidents_total} accidents", delta=delta_text)
-            kp3.metric(label="Highest Severity Today", value=f"Severity {highest_severity_today_level} with {highest_severity_today_count} accidents", delta=delta_text1)
+            kp1.metric(label="Total Accidents Today", value=kp1_value, delta=kp1_delta)
+            kp2.metric(label="Most Accidents City This Month", value=kp2_value, delta=kp2_delta)
+            kp3.metric(label="Highest Severity Today", value=kp3_value, delta=kp3_delta)
             
 
             ### row 1 2 columns
